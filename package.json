@@ -1,0 +1,10 @@
+{
+  "name": "xiaohongshu-multi-agent-runner",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Minimal runner for Xiaohongshu multi-agent workflow",
+  "scripts": {
+    "run": "node bin/run.js",
+    "run:dry": "node bin/run.js --dry-run"
+  }
+}

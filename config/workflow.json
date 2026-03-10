@@ -1,0 +1,22 @@
+{
+  "name": "xiaohongshu-mvp",
+  "version": "1.0.0",
+  "domain": "AI / 效率工具",
+  "positioning": "个人IP",
+  "publishing": {
+    "autoPublish": false
+  },
+  "steps": [
+    "trend-radar",
+    "topic-planner",
+    "copywriter",
+    "style-reviewer",
+    "launch-analyst"
+  ],
+  "humanCheckpoints": [
+    "topic-selection",
+    "final-review",
+    "manual-publish",
+    "metrics-feedback"
+  ]
+}

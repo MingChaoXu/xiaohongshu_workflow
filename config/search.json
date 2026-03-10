@@ -1,0 +1,18 @@
+{
+  "trend-radar": [
+    "tavily-search",
+    "multi-search-engine",
+    "web_search",
+    "web_fetch"
+  ],
+  "topic-planner": [
+    "tavily-search",
+    "multi-search-engine",
+    "web_fetch"
+  ],
+  "copywriter": [
+    "web_fetch"
+  ],
+  "style-reviewer": [],
+  "launch-analyst": []
+}

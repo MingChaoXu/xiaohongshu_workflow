@@ -1,0 +1,40 @@
+# Python Runner Usage
+
+## 环境
+优先支持 conda 环境运行。
+当前机器上已检测到的环境包括：`base`、`pandaai`、`vllm`、`vnpy`。
+
+默认启动脚本使用 `base`。如果你之后创建了 `py311`，只需设置：
+
+```bash
+export XHS_PY_ENV=py311
+```
+
+## 用法
+
+### 直接调用 Python
+```bash
+$HOME/miniconda3/bin/conda run -n base python bin/run.py --topic "AI效率工具个人IP选题" --mode search-enhanced
+```
+
+### 使用启动脚本
+```bash
+bash bin/run-py311.sh --topic "AI效率工具个人IP选题" --mode search-enhanced
+```
+
+## 参数
+- `--topic`
+- `--title`
+- `--date`
+- `--mode`
+- `--with-search`
+- `--query`
+- `--dry-run`
+
+## 说明
+Python 版已与当前联网版 Node runner 功能基本等价：
+- 初始化 run 目录
+- 生成 01~05 文件
+- 生成 manifest.json
+- 在联网模式下自动调用 Tavily 搜索
+- 写入 sources.json 和 01-trends.md

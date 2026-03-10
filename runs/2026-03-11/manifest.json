@@ -1,0 +1,55 @@
+{
+  "name": "xiaohongshu-mvp",
+  "version": "1.0.0",
+  "date": "2026-03-11",
+  "mode": "search-enhanced",
+  "topic": "测试：AI工作流最重要的不是提示词",
+  "title": "测试：AI工作流最重要的不是提示词",
+  "runDir": "/home/xmc/.openclaw/workspace/agents/xiaohongshu/runs/2026-03-11",
+  "createdAt": "2026-03-10T06:48:43.815Z",
+  "steps": [
+    "trend-radar",
+    "topic-planner",
+    "copywriter",
+    "style-reviewer",
+    "launch-analyst"
+  ],
+  "humanCheckpoints": [
+    "topic-selection",
+    "final-review",
+    "manual-publish",
+    "metrics-feedback"
+  ],
+  "models": {
+    "trend-radar": "aicodemirror-gpt/gpt-5.4",
+    "topic-planner": "aicodemirror-gpt/gpt-5.4",
+    "copywriter": "aicodemirror-gpt/gpt-5.4",
+    "style-reviewer": "aicodemirror-gpt/gpt-5.4",
+    "launch-analyst": "aicodemirror-gpt/gpt-5.4"
+  },
+  "search": {
+    "trend-radar": [
+      "tavily-search",
+      "multi-search-engine",
+      "web_search",
+      "web_fetch"
+    ],
+    "topic-planner": [
+      "tavily-search",
+      "multi-search-engine",
+      "web_fetch"
+    ],
+    "copywriter": [
+      "web_fetch"
+    ],
+    "style-reviewer": [],
+    "launch-analyst": []
+  },
+  "files": [
+    "01-trends.md",
+    "02-topics.md",
+    "03-draft.md",
+    "04-reviewed.md",
+    "05-publish-pack.md"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "default": "aicodemirror-gpt/gpt-5.4",
+  "agents": {
+    "trend-radar": "aicodemirror-gpt/gpt-5.4",
+    "topic-planner": "aicodemirror-gpt/gpt-5.4",
+    "copywriter": "aicodemirror-gpt/gpt-5.4",
+    "style-reviewer": "aicodemirror-gpt/gpt-5.4",
+    "launch-analyst": "aicodemirror-gpt/gpt-5.4"
+  }
+}
