@@ -343,12 +343,16 @@ def review_draft(draft: dict):
     if 'Adobe Express' in reviewed_body or 'Jasper' in reviewed_body or 'Microsoft 365 Copilot' in reviewed_body:
         issues.append('开头直接堆具体工具名，会让内容有一点资讯感')
         suggestions.append('开头更适合先说个人感受，再带出工具筛选逻辑')
-        reviewed_body = re.sub(r'^最近我最近越来越明显地感觉到，\n\n.*?\n\n但真正让我改变看法的，',
-                               '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“新不新”，而是它到底能不能真的帮上忙。\n\n但真正让我改变看法的，',
-                               reviewed_body,
-                               flags=re.S)
         reviewed_body = reviewed_body.replace(
             '最近我有一个很明显的感受：\n\nAdobe Express, Descript, Jasper, and Microsoft 365 Copilot are top AI productivity tools for creators and personal brands, enhancing creativity and efficiency.\n\n但真正让我改变看法的，',
+            '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“新不新”，而是它到底能不能真的帮上忙。\n\n但真正让我改变看法的，'
+        )
+
+    if 'Essential AI tools for creators include' in reviewed_body:
+        issues.append('英文摘要直接进入正文，会削弱小红书口吻')
+        suggestions.append('将英文工具摘要改写成中文感受型开头')
+        reviewed_body = reviewed_body.replace(
+            '最近我越来越明显地感觉到：\n\nEssential AI tools for creators include Buffer, Canva Magic Studio, and Writesonic for productivity and branding. These tools enhance content creation and personal brand management.\n\n但真正让我改变看法的，',
             '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“新不新”，而是它到底能不能真的帮上忙。\n\n但真正让我改变看法的，'
         )
 
@@ -391,6 +395,67 @@ def format_review_markdown(model_name: str, review: dict):
     lines.append(review['interaction'])
     lines.append('\n## Tags\n')
     lines.append(' '.join(review['tags']))
+    return '\n'.join(lines) + '\n'
+
+
+def generate_publish_pack(review: dict):
+    title = review['selected_title']
+    return {
+        'title': title,
+        'cover': review['cover'],
+        'body': review['final_body'],
+        'tags': review['tags'],
+        'publish_time': '工作日晚 20:00 左右',
+        'checklist': [
+            '封面文案控制在 2~3 行内，确保一眼能看懂观点',
+            '首段不要太长，尽量在前 3 句里讲清楚核心观点',
+            '全文避免堆太多工具名，先讲选择逻辑再讲工具',
+            '标签控制在 6~8 个，避免过度堆砌',
+            '发布后尽快补一条首评，承接下一篇内容',
+        ],
+        'metrics_template': [
+            '发布时间：',
+            '曝光：',
+            '点赞：',
+            '收藏：',
+            '评论：',
+            '涨粉：',
+            '评论区高频问题：',
+            '下次是否继续做同类题：',
+        ],
+        'retrospective': [
+            '如果收藏高于点赞，说明这类内容更偏工具型/决策型价值',
+            '如果评论多，优先继续做“我留下了哪些工具/为什么留下”系列',
+            '如果点击一般，下一次可加强标题的反差感或问题感',
+        ],
+    }
+
+
+def format_publish_markdown(model_name: str, publish_pack: dict):
+    lines = []
+    lines.append('# Step 05 / Publish Pack\n')
+    lines.append(f"- Selected Title: {publish_pack['title']}")
+    lines.append('- Agent: launch-analyst')
+    lines.append(f'- Model: {model_name}\n')
+    lines.append('## Final Title\n')
+    lines.append(publish_pack['title'])
+    lines.append('\n## Final Cover Copy\n')
+    lines.append(publish_pack['cover'])
+    lines.append('\n## Final Body\n')
+    lines.append(publish_pack['body'])
+    lines.append('\n## Tags\n')
+    lines.append(' '.join(publish_pack['tags']))
+    lines.append('\n## Suggested Publish Time\n')
+    lines.append(publish_pack['publish_time'])
+    lines.append('\n## Pre-Publish Checklist\n')
+    for item in publish_pack['checklist']:
+        lines.append(f'- {item}')
+    lines.append('\n## Metrics Template\n')
+    for item in publish_pack['metrics_template']:
+        lines.append(f'- {item}')
+    lines.append('\n## Retrospective Suggestions\n')
+    for item in publish_pack['retrospective']:
+        lines.append(f'- {item}')
     return '\n'.join(lines) + '\n'
 
 
@@ -495,23 +560,18 @@ def main():
     else:
         signals, candidates, recommended_index = generate_topic_candidates(topic, {})
 
-    topics_md = format_topics_markdown(
-        topic=topic,
-        model_name=vars_['topicModel'],
-        signals=signals,
-        candidates=candidates,
-        recommended_index=recommended_index,
-    )
+    topics_md = format_topics_markdown(topic, vars_['topicModel'], signals, candidates, recommended_index)
     write_text(run_dir / '02-topics.md', topics_md)
 
     selected_topic = candidates[recommended_index]
     draft_result = generate_draft(topic, selected_topic, search_result)
-    draft_md = format_draft_markdown(vars_['copyModel'], draft_result)
-    write_text(run_dir / '03-draft.md', draft_md)
+    write_text(run_dir / '03-draft.md', format_draft_markdown(vars_['copyModel'], draft_result))
 
     review_result = review_draft(draft_result)
-    review_md = format_review_markdown(vars_['reviewModel'], review_result)
-    write_text(run_dir / '04-reviewed.md', review_md)
+    write_text(run_dir / '04-reviewed.md', format_review_markdown(vars_['reviewModel'], review_result))
+
+    publish_pack = generate_publish_pack(review_result)
+    write_text(run_dir / '05-publish-pack.md', format_publish_markdown(vars_['launchModel'], publish_pack))
 
     print(f'Initialized run: {run_dir}')
     print(f'Topic: {topic}')
