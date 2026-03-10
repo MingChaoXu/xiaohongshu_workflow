@@ -348,12 +348,14 @@ def review_draft(draft: dict):
             '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“新不新”，而是它到底能不能真的帮上忙。\n\n但真正让我改变看法的，'
         )
 
-    if 'Essential AI tools for creators include' in reviewed_body:
+    if 'AI tools like' in reviewed_body or 'Essential AI tools for creators include' in reviewed_body:
         issues.append('英文摘要直接进入正文，会削弱小红书口吻')
         suggestions.append('将英文工具摘要改写成中文感受型开头')
-        reviewed_body = reviewed_body.replace(
-            '最近我越来越明显地感觉到：\n\nEssential AI tools for creators include Buffer, Canva Magic Studio, and Writesonic for productivity and branding. These tools enhance content creation and personal brand management.\n\n但真正让我改变看法的，',
-            '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“新不新”，而是它到底能不能真的帮上忙。\n\n但真正让我改变看法的，'
+        reviewed_body = re.sub(
+            r'最近我越来越明显地感觉到：\n\n.*?\n\n但真正让我改变看法的，',
+            '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“新不新”，而是它到底能不能真的帮上忙。\n\n但真正让我改变看法的，',
+            reviewed_body,
+            flags=re.S,
         )
 
     if not issues:
@@ -459,6 +461,71 @@ def format_publish_markdown(model_name: str, publish_pack: dict):
     return '\n'.join(lines) + '\n'
 
 
+def generate_assets_pack(review: dict):
+    title = review['selected_title']
+    cover = review['cover']
+    pages = [
+        {
+            'page': 1,
+            'title': '封面',
+            'copy': cover,
+            'visual': '极简封面，大字观点，白底或浅灰底，黑字 + 蓝色点缀',
+            'prompt': '小红书封面，4:5比例，极简风，白色和浅灰背景，黑色粗体中文标题，少量蓝色高亮，现代感，适合AI效率工具个人IP账号',
+        },
+        {
+            'page': 2,
+            'title': '问题提出',
+            'copy': '很多人用 AI 没效果，不一定是因为不会用，而是因为一直在追新，却没有形成自己的使用标准。',
+            'visual': '中间大字排版，弱背景，突出问题感',
+            'prompt': '小红书图文内页，4:5比例，极简信息卡片风，白灰底，黑色中文排版，强调问题感，现代知识博主视觉',
+        },
+        {
+            'page': 3,
+            'title': '核心观点',
+            'copy': '真正值得留下来的工具，不一定最强，但一定最顺手、最容易接进日常工作。',
+            'visual': '观点卡片，左侧关键词，右侧一句核心判断',
+            'prompt': '小红书知识分享卡片，4:5比例，简洁现代排版，白底黑字，蓝色强调，适合效率工具与AI主题',
+        },
+        {
+            'page': 4,
+            'title': '筛选标准',
+            'copy': '我现在筛 AI / 效率工具，主要看 3 点：上手成本、接入工作流能力、是否真的长期省事。',
+            'visual': '三栏信息卡片，三个标准分块展示',
+            'prompt': '小红书三栏信息图，4:5比例，白色背景，简洁图标，展示三个筛选标准，适合个人IP干货分享',
+        },
+        {
+            'page': 5,
+            'title': '实用建议',
+            'copy': '先别急着找最强工具，先找 2～3 个你真的会长期打开的工具。',
+            'visual': '建议型卡片，留白更多，句子简洁有力',
+            'prompt': '小红书建议型排版，4:5比例，留白感强，白灰背景，黑色文字，强调“少而精”的工具选择理念',
+        },
+        {
+            'page': 6,
+            'title': '互动收尾',
+            'copy': review['interaction'],
+            'visual': '结尾总结页，带互动提问感',
+            'prompt': '小红书结尾互动页，4:5比例，极简总结卡片风，白底黑字，轻科技感，适合AI效率主题内容收尾',
+        },
+    ]
+    return {'title': title, 'pages': pages}
+
+
+def format_assets_markdown(model_name: str, assets: dict):
+    lines = []
+    lines.append('# Step 06 / Assets\n')
+    lines.append(f"- Selected Title: {assets['title']}")
+    lines.append('- Agent: visual-packager')
+    lines.append(f'- Model: {model_name}\n')
+    lines.append('## 6-Page Script\n')
+    for page in assets['pages']:
+        lines.append(f"### 第 {page['page']} 页｜{page['title']}")
+        lines.append(f"- 文案：{page['copy']}")
+        lines.append(f"- 视觉建议：{page['visual']}")
+        lines.append(f"- 配图提示词：{page['prompt']}\n")
+    return '\n'.join(lines) + '\n'
+
+
 def main():
     parser = argparse.ArgumentParser(description='Xiaohongshu multi-agent runner (Python)')
     parser.add_argument('--date', default=today_str())
@@ -490,7 +557,8 @@ def main():
         ('02-topics.md', '# Run ${date} / Step 02 / Topics\n\n- Topic: ${topic}\n- Agent: topic-planner\n- Model: ${topicModel}\n\n## Candidate Topics\n\n'),
         ('03-draft.md', '# Run ${date} / Step 03 / Draft\n\n- Selected Title: ${title}\n- Agent: copywriter\n- Model: ${copyModel}\n\n## Draft\n\n'),
         ('04-reviewed.md', '# Run ${date} / Step 04 / Reviewed\n\n- Selected Title: ${title}\n- Agent: style-reviewer\n- Model: ${reviewModel}\n\n## Review\n\n'),
-        ('05-publish-pack.md', '# Run ${date} / Step 05 / Publish Pack\n\n- Selected Title: ${title}\n- Agent: launch-analyst\n- Model: ${launchModel}\n\n## Publish Checklist\n\n')
+        ('05-publish-pack.md', '# Run ${date} / Step 05 / Publish Pack\n\n- Selected Title: ${title}\n- Agent: launch-analyst\n- Model: ${launchModel}\n\n## Publish Checklist\n\n'),
+        ('06-assets.md', '# Run ${date} / Step 06 / Assets\n\n- Selected Title: ${title}\n- Agent: visual-packager\n\n## Assets\n\n')
     ]
 
     vars_ = {
@@ -515,7 +583,7 @@ def main():
         'title': title,
         'runDir': str(run_dir),
         'createdAt': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
-        'steps': workflow['steps'],
+        'steps': workflow['steps'] + ['visual-packager'],
         'humanCheckpoints': workflow['humanCheckpoints'],
         'models': models['agents'],
         'search': search,
@@ -560,8 +628,7 @@ def main():
     else:
         signals, candidates, recommended_index = generate_topic_candidates(topic, {})
 
-    topics_md = format_topics_markdown(topic, vars_['topicModel'], signals, candidates, recommended_index)
-    write_text(run_dir / '02-topics.md', topics_md)
+    write_text(run_dir / '02-topics.md', format_topics_markdown(topic, vars_['topicModel'], signals, candidates, recommended_index))
 
     selected_topic = candidates[recommended_index]
     draft_result = generate_draft(topic, selected_topic, search_result)
@@ -572,6 +639,9 @@ def main():
 
     publish_pack = generate_publish_pack(review_result)
     write_text(run_dir / '05-publish-pack.md', format_publish_markdown(vars_['launchModel'], publish_pack))
+
+    assets_pack = generate_assets_pack(review_result)
+    write_text(run_dir / '06-assets.md', format_assets_markdown(vars_['launchModel'], assets_pack))
 
     print(f'Initialized run: {run_dir}')
     print(f'Topic: {topic}')

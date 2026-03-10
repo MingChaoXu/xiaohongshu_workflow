@@ -11,7 +11,8 @@
     "topic-planner",
     "copywriter",
     "style-reviewer",
-    "launch-analyst"
+    "launch-analyst",
+    "visual-packager"
   ],
   "humanCheckpoints": [
     "topic-selection",
