@@ -9,6 +9,6 @@
     "visual-packager": "aicodemirror-gpt/gpt-5.4"
   },
   "imageGeneration": {
-    "visual-packager": "bytedance-seed/seed-2.0-mini"
+    "visual-packager": "openrouter/bytedance-seed/seedream-4.5"
   }
 }

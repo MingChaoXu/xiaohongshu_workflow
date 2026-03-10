@@ -23,7 +23,7 @@ XHS-Visual-Packager
 
 ## Model Strategy
 - 视觉策划模型：`aicodemirror-gpt/gpt-5.4`
-- 图片生成模型：`bytedance-seed/seed-2.0-mini`
+- 图片生成模型：`openrouter/bytedance-seed/seedream-4.5`
 
 ## Rules
 - 页面结构要适合小红书图文笔记
