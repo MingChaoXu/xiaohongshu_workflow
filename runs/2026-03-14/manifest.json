@@ -1,0 +1,57 @@
+{
+  "name": "xiaohongshu-mvp",
+  "version": "1.0.0",
+  "date": "2026-03-14",
+  "mode": "search-enhanced",
+  "topic": "AI效率工具个人IP选题自动化",
+  "title": "AI效率工具个人IP选题自动化",
+  "runDir": "/home/xmc/.openclaw/workspace/agents/xiaohongshu/runs/2026-03-14",
+  "createdAt": "2026-03-10T07:52:39.921688Z",
+  "steps": [
+    "trend-radar",
+    "topic-planner",
+    "copywriter",
+    "style-reviewer",
+    "launch-analyst"
+  ],
+  "humanCheckpoints": [
+    "topic-selection",
+    "final-review",
+    "manual-publish",
+    "metrics-feedback"
+  ],
+  "models": {
+    "trend-radar": "aicodemirror-gpt/gpt-5.4",
+    "topic-planner": "aicodemirror-gpt/gpt-5.4",
+    "copywriter": "aicodemirror-gpt/gpt-5.4",
+    "style-reviewer": "aicodemirror-gpt/gpt-5.4",
+    "launch-analyst": "aicodemirror-gpt/gpt-5.4"
+  },
+  "search": {
+    "trend-radar": [
+      "tavily-search",
+      "multi-search-engine",
+      "web_search",
+      "web_fetch"
+    ],
+    "topic-planner": [
+      "tavily-search",
+      "multi-search-engine",
+      "web_fetch"
+    ],
+    "copywriter": [
+      "web_fetch"
+    ],
+    "style-reviewer": [],
+    "launch-analyst": []
+  },
+  "searchEnabled": true,
+  "searchQuery": "latest AI productivity tools news for creators and solopreneurs",
+  "files": [
+    "01-trends.md",
+    "02-topics.md",
+    "03-draft.md",
+    "04-reviewed.md",
+    "05-publish-pack.md"
+  ]
+}

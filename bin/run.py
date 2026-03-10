@@ -110,6 +110,110 @@ def run_tavily(query: str):
         }
 
 
+def infer_signals(topic: str, search_result: dict):
+    answer = (search_result or {}).get('answer', '')
+    sources = (search_result or {}).get('sources', [])
+    titles = ' | '.join([s.get('title', '') for s in sources[:5]])
+    blob = f'{topic} {answer} {titles}'.lower()
+
+    signals = []
+    if any(k in blob for k in ['creator', 'content', 'social media', 'solopreneur']):
+        signals.append('创作者/内容生产场景上升')
+    if any(k in blob for k in ['productivity', 'workflow', 'streamline', 'efficiency']):
+        signals.append('用户更关心工作流和提效闭环')
+    if any(k in blob for k in ['tools', 'best', 'essential']):
+        signals.append('用户正在筛选真正值得留下的工具')
+    if any(k in blob for k in ['new', 'latest', 'release', '2026', '2025']):
+        signals.append('新工具和新版本持续刺激选题更新')
+    if not signals:
+        signals = ['AI/效率工具仍然适合做个人经验型内容', '用户更愿意收藏可复制的提效方案']
+    return signals[:4]
+
+
+def generate_topic_candidates(topic: str, search_result: dict):
+    signals = infer_signals(topic, search_result)
+    summary = (search_result or {}).get('answer', '')
+
+    base_candidates = [
+        {
+            'title': '我现在用 AI 提效，最重要的已经不是提示词了',
+            'audience': '已经尝试过 AI，但效果不稳定的人',
+            'click_reason': '有观点反差，容易点开',
+            'save_reason': '适合收藏后对照自己的工作流',
+            'structure': '问题感受 → 核心观点 → 3 个接入场景 → 总结',
+            'priority': '高',
+        },
+        {
+            'title': '我试了一圈 AI 工具，最后真正留下来的只有这 3 类',
+            'audience': '工具焦虑、选择困难的用户',
+            'click_reason': '“留下来”比“推荐更多”更有筛选价值',
+            'save_reason': '方便后续选工具时回看',
+            'structure': '为什么开始筛 → 留下的 3 类 → 分别适合谁 → 建议',
+            'priority': '高',
+        },
+        {
+            'title': '如果你想少折腾，直接抄我这套 AI 工作流就行',
+            'audience': '想要低门槛提效方案的人',
+            'click_reason': '有明确获得感和可复制感',
+            'save_reason': '适合直接照抄执行',
+            'structure': '适合谁 → 工作流步骤 → 每步用什么工具 → 注意点',
+            'priority': '高',
+        },
+        {
+            'title': '很多人用 AI 没效果，不是不会提问，而是卡在这里',
+            'audience': '用过 AI 但觉得没想象中好用的人',
+            'click_reason': '问题导向，容易引发共鸣',
+            'save_reason': '适合做避坑提醒',
+            'structure': '低效表现 → 根因分析 → 替代做法 → 结论',
+            'priority': '中高',
+        },
+        {
+            'title': '适合内容创作者留下来的 AI 工具，不一定是最强的那个',
+            'audience': '内容创作者、个人IP经营者',
+            'click_reason': '贴近身份场景，容易精准吸引',
+            'save_reason': '后续选型和搭配都有复用价值',
+            'structure': '误区 → 选择标准 → 推荐类别 → 个人建议',
+            'priority': '中高',
+        },
+    ]
+
+    preferred = 0
+    blob = f"{topic} {summary}".lower()
+    if 'creator' in blob or 'content' in blob:
+        preferred = 4
+    elif 'workflow' in blob or 'productivity' in blob:
+        preferred = 2
+
+    return signals, base_candidates, preferred
+
+
+def format_topics_markdown(topic: str, model_name: str, signals: list, candidates: list, recommended_index: int):
+    lines = []
+    lines.append(f'# Step 02 / Topics\n')
+    lines.append(f'- Topic: {topic}')
+    lines.append(f'- Agent: topic-planner')
+    lines.append(f'- Model: {model_name}\n')
+    lines.append('## Signals')
+    for s in signals:
+        lines.append(f'- {s}')
+    lines.append('\n## Candidate Topics\n')
+
+    for i, c in enumerate(candidates, start=1):
+        lines.append(f'### 题 {i}')
+        lines.append(c['title'])
+        lines.append(f"- 核心受众：{c['audience']}")
+        lines.append(f"- 点击理由：{c['click_reason']}")
+        lines.append(f"- 收藏理由：{c['save_reason']}")
+        lines.append(f"- 内容结构：{c['structure']}")
+        lines.append(f"- 优先级：{c['priority']}\n")
+
+    rec = candidates[recommended_index]
+    lines.append('## Recommended Topic\n')
+    lines.append(rec['title'])
+    lines.append(f"- 推荐原因：{rec['click_reason']}；同时适合当前个人IP方向。")
+    return '\n'.join(lines) + '\n'
+
+
 def main():
     parser = argparse.ArgumentParser(description='Xiaohongshu multi-agent runner (Python)')
     parser.add_argument('--date', default=today_str())
@@ -185,6 +289,7 @@ def main():
     for name, tpl in step_files:
         write_text(run_dir / name, render(tpl, vars_))
 
+    topic_planner_result = None
     if with_search:
         result = run_tavily(search_query)
         write_text(sources_path, json.dumps(result, ensure_ascii=False, indent=2) + '\n')
@@ -201,9 +306,38 @@ def main():
                         appended += f"  {s['url']}\n"
             else:
                 appended += '- No sources returned\n'
+            signals, candidates, recommended_index = generate_topic_candidates(topic, result)
+            topic_planner_result = {
+                'signals': signals,
+                'candidates': candidates,
+                'recommended_index': recommended_index,
+            }
         else:
             appended += f"\n## Search Error\n\n{result.get('reason', 'Unknown error')}\n"
+            signals, candidates, recommended_index = generate_topic_candidates(topic, {})
+            topic_planner_result = {
+                'signals': signals,
+                'candidates': candidates,
+                'recommended_index': recommended_index,
+            }
         write_text(trends_file, base + appended)
+    else:
+        signals, candidates, recommended_index = generate_topic_candidates(topic, {})
+        topic_planner_result = {
+            'signals': signals,
+            'candidates': candidates,
+            'recommended_index': recommended_index,
+        }
+
+    topics_file = run_dir / '02-topics.md'
+    topics_md = format_topics_markdown(
+        topic=topic,
+        model_name=vars_['topicModel'],
+        signals=topic_planner_result['signals'],
+        candidates=topic_planner_result['candidates'],
+        recommended_index=topic_planner_result['recommended_index'],
+    )
+    write_text(topics_file, topics_md)
 
     print(f'Initialized run: {run_dir}')
     print(f'Topic: {topic}')

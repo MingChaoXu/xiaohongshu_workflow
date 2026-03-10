@@ -32,9 +32,10 @@ bash bin/run-py311.sh --topic "AI效率工具个人IP选题" --mode search-enhan
 - `--dry-run`
 
 ## 说明
-Python 版已与当前联网版 Node runner 功能基本等价：
+Python 版已超过当前 Node runner，当前支持：
 - 初始化 run 目录
 - 生成 01~05 文件
 - 生成 manifest.json
 - 在联网模式下自动调用 Tavily 搜索
 - 写入 sources.json 和 01-trends.md
+- 自动生成 02-topics.md（候选选题 + 推荐选题）
