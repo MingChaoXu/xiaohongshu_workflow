@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 import argparse
+import base64
 import json
+import mimetypes
 import os
 import re
 import subprocess
+import urllib.request
+import urllib.error
 from datetime import datetime, UTC
 from pathlib import Path
 
@@ -511,18 +515,104 @@ def generate_assets_pack(review: dict):
     return {'title': title, 'pages': pages}
 
 
+def infer_ext_from_data_url(data_url: str) -> str:
+    match = re.match(r'^data:(image/[^;]+);base64,', data_url)
+    if not match:
+        return '.bin'
+    mime = match.group(1)
+    return mimetypes.guess_extension(mime) or '.jpg'
+
+
+def save_data_url_image(data_url: str, out_path: Path):
+    _, b64_data = data_url.split(',', 1)
+    raw = base64.b64decode(b64_data)
+    ensure_dir(out_path.parent)
+    out_path.write_bytes(raw)
+
+
+def openrouter_headers(api_key: str):
+    return {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://github.com/MingChaoXu/xiaohongshu_workflow',
+        'X-Title': 'xiaohongshu_workflow',
+    }
+
+
+def openrouter_request(url: str, payload: dict, api_key: str):
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+        headers=openrouter_headers(api_key),
+        method='POST',
+    )
+    with urllib.request.urlopen(req, timeout=180) as resp:
+        return json.loads(resp.read().decode('utf-8'))
+
+
+def generate_images_via_openrouter(assets: dict, image_model: str):
+    api_key = os.environ.get('OPENROUTER_API_KEY') or safe_read_openclaw_env('OPENROUTER_API_KEY')
+    if not api_key:
+        return {'ok': False, 'reason': 'OPENROUTER_API_KEY not configured', 'images': []}
+
+    images = []
+    try:
+        for page in assets['pages']:
+            payload = {
+                'model': image_model,
+                'input': page['prompt'],
+                'modalities': ['image'],
+            }
+            resp = openrouter_request('https://openrouter.ai/api/v1/responses', payload, api_key)
+            data_url = None
+            for item in resp.get('output', []):
+                if item.get('type') == 'image_generation_call' and item.get('result', '').startswith('data:image/'):
+                    data_url = item['result']
+                    break
+            if not data_url:
+                raise ValueError(f'No image data returned for page {page["page"]}')
+            images.append({
+                'page': page['page'],
+                'title': page['title'],
+                'prompt': page['prompt'],
+                'data_url': data_url,
+            })
+        return {'ok': True, 'images': images}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8', errors='ignore')
+        return {'ok': False, 'reason': f'HTTP {e.code}: {body[:1000]}', 'images': images}
+    except Exception as e:
+        return {'ok': False, 'reason': str(e), 'images': images}
+
+
 def format_assets_markdown(model_name: str, assets: dict):
     lines = []
     lines.append('# Step 06 / Assets\n')
     lines.append(f"- Selected Title: {assets['title']}")
     lines.append('- Agent: visual-packager')
-    lines.append(f'- Model: {model_name}\n')
+    lines.append(f'- Model: {model_name}')
+    if assets.get('image_model'):
+        lines.append(f"- Image Model: {assets['image_model']}")
+    if assets.get('image_generation_status'):
+        lines.append(f"- Image Generation Status: {assets['image_generation_status']}")
+    if assets.get('image_generation_reason'):
+        lines.append(f"- Image Generation Note: {assets['image_generation_reason']}")
+    lines.append('')
+    if assets.get('generated_images'):
+        lines.append('## Generated Images\n')
+        for item in assets['generated_images']:
+            lines.append(f"- 第 {item['page']} 页｜{item['title']}: `{item['path']}`")
+        lines.append('')
     lines.append('## 6-Page Script\n')
     for page in assets['pages']:
         lines.append(f"### 第 {page['page']} 页｜{page['title']}")
         lines.append(f"- 文案：{page['copy']}")
         lines.append(f"- 视觉建议：{page['visual']}")
-        lines.append(f"- 配图提示词：{page['prompt']}\n")
+        lines.append(f"- 配图提示词：{page['prompt']}")
+        generated = next((x for x in assets.get('generated_images', []) if x['page'] == page['page']), None)
+        if generated:
+            lines.append(f"- 已生成文件：`{generated['path']}`")
+        lines.append('')
     return '\n'.join(lines) + '\n'
 
 
@@ -641,6 +731,31 @@ def main():
     write_text(run_dir / '05-publish-pack.md', format_publish_markdown(vars_['launchModel'], publish_pack))
 
     assets_pack = generate_assets_pack(review_result)
+    image_model = models.get('imageGeneration', {}).get('visual-packager', '')
+    assets_pack['image_model'] = image_model
+    assets_pack['generated_images'] = []
+
+    if image_model:
+        image_result = generate_images_via_openrouter(assets_pack, image_model)
+        assets_pack['image_generation_status'] = 'success' if image_result.get('ok') else 'failed'
+        assets_pack['image_generation_reason'] = image_result.get('reason', '')
+        if image_result.get('ok'):
+            image_dir = run_dir / 'images'
+            ensure_dir(image_dir)
+            for item in image_result.get('images', []):
+                ext = infer_ext_from_data_url(item['data_url'])
+                filename = f"page-{item['page']:02d}{ext}"
+                out_path = image_dir / filename
+                save_data_url_image(item['data_url'], out_path)
+                assets_pack['generated_images'].append({
+                    'page': item['page'],
+                    'title': item['title'],
+                    'path': str(out_path.relative_to(run_dir)),
+                })
+    else:
+        assets_pack['image_generation_status'] = 'skipped'
+        assets_pack['image_generation_reason'] = 'No image model configured'
+
     write_text(run_dir / '06-assets.md', format_assets_markdown(vars_['launchModel'], assets_pack))
 
     print(f'Initialized run: {run_dir}')
