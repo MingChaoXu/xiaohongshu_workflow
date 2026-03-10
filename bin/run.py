@@ -465,6 +465,38 @@ def format_publish_markdown(model_name: str, publish_pack: dict):
     return '\n'.join(lines) + '\n'
 
 
+def export_final_post(run_dir: Path, publish_pack: dict):
+    final_dir = run_dir / 'final'
+    ensure_dir(final_dir)
+
+    title_text = publish_pack['title'].strip() + '\n'
+    cover_text = publish_pack['cover'].strip() + '\n'
+    body_text = publish_pack['body'].strip() + '\n'
+    tags_text = ' '.join(publish_pack['tags']).strip() + '\n'
+    post_text = f"{publish_pack['title'].strip()}\n\n{publish_pack['body'].strip()}\n\n{' '.join(publish_pack['tags']).strip()}\n"
+
+    write_text(final_dir / 'title.txt', title_text)
+    write_text(final_dir / 'cover.txt', cover_text)
+    write_text(final_dir / 'body.txt', body_text)
+    write_text(final_dir / 'tags.txt', tags_text)
+    write_text(final_dir / 'post.md', post_text)
+    write_text(
+        final_dir / 'README.md',
+        '\n'.join([
+            '# Final Post Export',
+            '',
+            '- 直接发帖优先看：`post.md`',
+            '- 单独复制标题：`title.txt`',
+            '- 单独复制正文：`body.txt`',
+            '- 单独复制标签：`tags.txt`',
+            '- 封面文案：`cover.txt`',
+            '',
+            '注意：`05-publish-pack.md` 是工作流过程文件，不要整份直接复制到小红书。',
+            ''
+        ])
+    )
+
+
 def generate_assets_pack(review: dict):
     title = review['selected_title']
     cover = review['cover']
@@ -737,6 +769,7 @@ def main():
 
     publish_pack = generate_publish_pack(review_result)
     write_text(run_dir / '05-publish-pack.md', format_publish_markdown(vars_['launchModel'], publish_pack))
+    export_final_post(run_dir, publish_pack)
 
     assets_pack = generate_assets_pack(review_result)
     image_model = models.get('imageGeneration', {}).get('visual-packager', '')
