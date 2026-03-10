@@ -44,5 +44,5 @@ Python 版已超过当前 Node runner，当前支持：
 - 自动生成 05-publish-pack.md（发布时间 + 检查项 + 数据模板 + 复盘建议）
 - 自动生成 06-assets.md（6页图文脚本 + 每页配图提示词）
 - 视觉策划模型配置为 `aicodemirror-gpt/gpt-5.4`
-- 出图模型配置切换为 `openrouter/bytedance-seed/seedream-4.5`
-- 当前仍需继续验证该模型在 OpenRouter 上的真实图片输出接口方式
+- 出图模型配置为 `bytedance-seed/seedream-4.5`
+- 已验证可通过 OpenRouter `/api/v1/responses` 返回 `data:image/jpeg;base64,...`，runner 会自动解码并保存到 `runs/YYYY-MM-DD/images/`

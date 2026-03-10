@@ -1,15 +1,10 @@
 # Run 2026-03-10 / Step 01 / Trends
 
-## 联网增强趋势信号
-1. 用户开始从“尝鲜 AI 工具”转向“留下哪些能长期用”
-2. AI 提效讨论重心从提示词转向工作流
-3. 新手仍然缺少真正低门槛的起步方案
-4. 效率工具选择标准正在从功能多转向接入成本低
-5. 中文用户更偏好可复制的懒人方案
+- Topic: AI效率工具个人IP
+- Mode: mvp
+- Agent: trend-radar
+- Model: aicodemirror-gpt/gpt-5.4
+- Search: tavily-search, multi-search-engine, web_search, web_fetch
 
-## 候选方向
-- 我试了一圈后，最后只留下这 3 个 AI 工具
-- 我现在用 AI 提效，最重要的已经不是提示词了
-- 如果你想少折腾，直接抄我这套 AI 工作流就行
-- 一个效率工具值不值得留，我现在只看这 3 点
-- 普通人开始用 AI，先别急着学高级提示词
+## Notes
+
