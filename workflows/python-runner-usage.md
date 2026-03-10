@@ -39,3 +39,4 @@ Python 版已超过当前 Node runner，当前支持：
 - 在联网模式下自动调用 Tavily 搜索
 - 写入 sources.json 和 01-trends.md
 - 自动生成 02-topics.md（候选选题 + 推荐选题）
+- 自动生成 03-draft.md（标题备选 + 封面文案 + 正文初稿 + 互动引导 + 标签）

@@ -214,6 +214,114 @@ def format_topics_markdown(topic: str, model_name: str, signals: list, candidate
     return '\n'.join(lines) + '\n'
 
 
+def create_title_variants(base_title: str):
+    variants = [
+        base_title,
+        f'我后来才发现：{base_title}',
+        f'如果你也在折腾 AI，建议先看这篇：{base_title}',
+        f'{base_title}，这可能是我最近最认同的一点',
+        f'很多人忽略了一点：{base_title}',
+    ]
+    seen = []
+    for v in variants:
+        if v not in seen:
+            seen.append(v)
+    return seen[:5]
+
+
+def choose_cover_line(base_title: str):
+    if '不是提示词' in base_title:
+        return 'AI提效最重要的\n已经不是提示词了'
+    if '工作流' in base_title:
+        return '少折腾一点\n直接抄这套AI工作流'
+    if '留下来' in base_title:
+        return '试了一圈后\n我只留下这几类工具'
+    return base_title.replace('，', '\n', 1)
+
+
+def generate_draft(topic: str, selected_topic: dict, search_result: dict):
+    title = selected_topic['title']
+    titles = create_title_variants(title)
+    cover = choose_cover_line(title)
+    summary = (search_result or {}).get('answer', '')
+    summary_line = summary if summary else '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“会不会写提示词”，而是它到底能不能真的帮上忙。'
+
+    body = f"""最近我有一个很明显的感受：
+
+{summary_line}
+
+但真正让我改变看法的，不是又出了多少新工具，
+而是我开始意识到一件更现实的事：
+**{title}**
+
+以前我也会花很多时间看新工具、试新功能、研究各种玩法。
+但用到后面我发现，真正能长期留下来的，不一定是最强的那个，
+而是那个你愿意反复打开、能自然接进自己日常工作里的那个。
+
+对我来说，现在判断一个 AI / 效率工具值不值得留下，基本会看这几件事：
+
+1. 上手是不是太重
+2. 能不能直接接进我现在的工作流
+3. 它到底是在“看起来很厉害”，还是能长期帮我省事
+
+很多人一开始用 AI，会很容易掉进一个误区：
+总想找最强的那个、最新的那个、功能最多的那个。
+但真实使用一段时间后你会发现，
+**适合长期使用的工具，往往不是参数最夸张的，而是最顺手的。**
+
+尤其如果你本身在做内容、做个人IP、或者本来就有很多重复性工作，
+你真正需要的不是一堆新名字，
+而是 2～3 个你真的会持续用下去的工具或流程。
+
+我现在更在意的是：
+- 它能不能让我更快开始
+- 它能不能帮我整理混乱信息
+- 它能不能减少重复劳动
+
+如果一款工具做不到这几点，
+哪怕它再火、再多人推荐，我最后大概率也不会留下。
+
+所以如果你最近也在各种 AI 工具之间来回试，
+我的建议反而是：**先别急着追新。**
+
+先想清楚你每天最常发生的几个场景，
+再去找真正适合自己的那 2～3 个工具。 
+你会比盲目堆工具，更快感受到提效这件事真的发生了。
+"""
+
+    interaction = '你现在长期留下来的 AI 工具，或者最常用的 AI 场景是什么？'
+    tags = ['#AI工具', '#效率工具', '#AI提效', '#AI工作流', '#个人IP', '#内容创作', '#生产力工具', '#小红书运营']
+
+    return {
+        'selected_title': title,
+        'title_variants': titles,
+        'cover': cover,
+        'body': body.strip(),
+        'interaction': interaction,
+        'tags': tags,
+    }
+
+
+def format_draft_markdown(model_name: str, draft: dict):
+    lines = []
+    lines.append('# Step 03 / Draft\n')
+    lines.append(f"- Selected Title: {draft['selected_title']}")
+    lines.append('- Agent: copywriter')
+    lines.append(f'- Model: {model_name}\n')
+    lines.append('## Title Variants')
+    for i, t in enumerate(draft['title_variants'], start=1):
+        lines.append(f'{i}. {t}')
+    lines.append('\n## Cover Copy\n')
+    lines.append(draft['cover'])
+    lines.append('\n## Body Draft\n')
+    lines.append(draft['body'])
+    lines.append('\n## Interaction Prompt\n')
+    lines.append(draft['interaction'])
+    lines.append('\n## Tags\n')
+    lines.append(' '.join(draft['tags']))
+    return '\n'.join(lines) + '\n'
+
+
 def main():
     parser = argparse.ArgumentParser(description='Xiaohongshu multi-agent runner (Python)')
     parser.add_argument('--date', default=today_str())
@@ -289,9 +397,11 @@ def main():
     for name, tpl in step_files:
         write_text(run_dir / name, render(tpl, vars_))
 
+    search_result = {}
     topic_planner_result = None
     if with_search:
         result = run_tavily(search_query)
+        search_result = result
         write_text(sources_path, json.dumps(result, ensure_ascii=False, indent=2) + '\n')
         trends_file = run_dir / '01-trends.md'
         base = trends_file.read_text(encoding='utf-8')
@@ -338,6 +448,11 @@ def main():
         recommended_index=topic_planner_result['recommended_index'],
     )
     write_text(topics_file, topics_md)
+
+    selected_topic = topic_planner_result['candidates'][topic_planner_result['recommended_index']]
+    draft_result = generate_draft(topic, selected_topic, search_result)
+    draft_md = format_draft_markdown(vars_['copyModel'], draft_result)
+    write_text(run_dir / '03-draft.md', draft_md)
 
     print(f'Initialized run: {run_dir}')
     print(f'Topic: {topic}')
