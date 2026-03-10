@@ -5,6 +5,10 @@
     "topic-planner": "aicodemirror-gpt/gpt-5.4",
     "copywriter": "aicodemirror-gpt/gpt-5.4",
     "style-reviewer": "aicodemirror-gpt/gpt-5.4",
-    "launch-analyst": "aicodemirror-gpt/gpt-5.4"
+    "launch-analyst": "aicodemirror-gpt/gpt-5.4",
+    "visual-packager": "openrouter/moonshotai/kimi-k2.5"
+  },
+  "imageGeneration": {
+    "visual-packager": "openrouter/bytedance-seed/seed-2.0-mini"
   }
 }
