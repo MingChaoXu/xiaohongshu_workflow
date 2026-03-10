@@ -40,3 +40,4 @@ Python 版已超过当前 Node runner，当前支持：
 - 写入 sources.json 和 01-trends.md
 - 自动生成 02-topics.md（候选选题 + 推荐选题）
 - 自动生成 03-draft.md（标题备选 + 封面文案 + 正文初稿 + 互动引导 + 标签）
+- 自动生成 04-reviewed.md（审核结论 + 问题 + 修改建议 + 终稿）

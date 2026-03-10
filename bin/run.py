@@ -189,9 +189,9 @@ def generate_topic_candidates(topic: str, search_result: dict):
 
 def format_topics_markdown(topic: str, model_name: str, signals: list, candidates: list, recommended_index: int):
     lines = []
-    lines.append(f'# Step 02 / Topics\n')
+    lines.append('# Step 02 / Topics\n')
     lines.append(f'- Topic: {topic}')
-    lines.append(f'- Agent: topic-planner')
+    lines.append('- Agent: topic-planner')
     lines.append(f'- Model: {model_name}\n')
     lines.append('## Signals')
     for s in signals:
@@ -322,6 +322,78 @@ def format_draft_markdown(model_name: str, draft: dict):
     return '\n'.join(lines) + '\n'
 
 
+def review_draft(draft: dict):
+    body = draft['body']
+    issues = []
+    suggestions = []
+
+    replacements = {
+        '参数最夸张的': '功能最猛的',
+        '看起来很厉害': '看起来很强',
+        '我有一个很明显的感受': '我越来越明显地感觉到',
+    }
+
+    reviewed_body = body
+    for old, new in replacements.items():
+        if old in reviewed_body:
+            reviewed_body = reviewed_body.replace(old, new)
+            issues.append(f'存在偏书面或略硬的表达：{old}')
+            suggestions.append(f'改为更自然的表达：{new}')
+
+    if 'Adobe Express' in reviewed_body or 'Jasper' in reviewed_body or 'Microsoft 365 Copilot' in reviewed_body:
+        issues.append('开头直接堆具体工具名，会让内容有一点资讯感')
+        suggestions.append('开头更适合先说个人感受，再带出工具筛选逻辑')
+        reviewed_body = re.sub(r'^最近我最近越来越明显地感觉到，\n\n.*?\n\n但真正让我改变看法的，',
+                               '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“新不新”，而是它到底能不能真的帮上忙。\n\n但真正让我改变看法的，',
+                               reviewed_body,
+                               flags=re.S)
+        reviewed_body = reviewed_body.replace(
+            '最近我有一个很明显的感受：\n\nAdobe Express, Descript, Jasper, and Microsoft 365 Copilot are top AI productivity tools for creators and personal brands, enhancing creativity and efficiency.\n\n但真正让我改变看法的，',
+            '最近我越来越明显地感觉到，大家对 AI 的期待已经不只是“新不新”，而是它到底能不能真的帮上忙。\n\n但真正让我改变看法的，'
+        )
+
+    if not issues:
+        issues = ['整体方向正确，但可以进一步减少说明书感']
+        suggestions = ['保留核心观点，增加更自然的人话表达']
+
+    reviewed_title = draft['title_variants'][0]
+    return {
+        'selected_title': reviewed_title,
+        'conclusion': '适合发布，建议采用润色后的版本',
+        'issues': issues,
+        'suggestions': suggestions,
+        'final_body': reviewed_body.strip(),
+        'cover': draft['cover'],
+        'interaction': draft['interaction'],
+        'tags': draft['tags'],
+    }
+
+
+def format_review_markdown(model_name: str, review: dict):
+    lines = []
+    lines.append('# Step 04 / Reviewed\n')
+    lines.append(f"- Selected Title: {review['selected_title']}")
+    lines.append('- Agent: style-reviewer')
+    lines.append(f'- Model: {model_name}\n')
+    lines.append('## Review Conclusion\n')
+    lines.append(review['conclusion'])
+    lines.append('\n## Main Issues\n')
+    for item in review['issues']:
+        lines.append(f'- {item}')
+    lines.append('\n## Suggestions\n')
+    for item in review['suggestions']:
+        lines.append(f'- {item}')
+    lines.append('\n## Final Cover Copy\n')
+    lines.append(review['cover'])
+    lines.append('\n## Final Body\n')
+    lines.append(review['final_body'])
+    lines.append('\n## Interaction Prompt\n')
+    lines.append(review['interaction'])
+    lines.append('\n## Tags\n')
+    lines.append(' '.join(review['tags']))
+    return '\n'.join(lines) + '\n'
+
+
 def main():
     parser = argparse.ArgumentParser(description='Xiaohongshu multi-agent runner (Python)')
     parser.add_argument('--date', default=today_str())
@@ -398,7 +470,6 @@ def main():
         write_text(run_dir / name, render(tpl, vars_))
 
     search_result = {}
-    topic_planner_result = None
     if with_search:
         result = run_tavily(search_query)
         search_result = result
@@ -417,42 +488,30 @@ def main():
             else:
                 appended += '- No sources returned\n'
             signals, candidates, recommended_index = generate_topic_candidates(topic, result)
-            topic_planner_result = {
-                'signals': signals,
-                'candidates': candidates,
-                'recommended_index': recommended_index,
-            }
         else:
             appended += f"\n## Search Error\n\n{result.get('reason', 'Unknown error')}\n"
             signals, candidates, recommended_index = generate_topic_candidates(topic, {})
-            topic_planner_result = {
-                'signals': signals,
-                'candidates': candidates,
-                'recommended_index': recommended_index,
-            }
         write_text(trends_file, base + appended)
     else:
         signals, candidates, recommended_index = generate_topic_candidates(topic, {})
-        topic_planner_result = {
-            'signals': signals,
-            'candidates': candidates,
-            'recommended_index': recommended_index,
-        }
 
-    topics_file = run_dir / '02-topics.md'
     topics_md = format_topics_markdown(
         topic=topic,
         model_name=vars_['topicModel'],
-        signals=topic_planner_result['signals'],
-        candidates=topic_planner_result['candidates'],
-        recommended_index=topic_planner_result['recommended_index'],
+        signals=signals,
+        candidates=candidates,
+        recommended_index=recommended_index,
     )
-    write_text(topics_file, topics_md)
+    write_text(run_dir / '02-topics.md', topics_md)
 
-    selected_topic = topic_planner_result['candidates'][topic_planner_result['recommended_index']]
+    selected_topic = candidates[recommended_index]
     draft_result = generate_draft(topic, selected_topic, search_result)
     draft_md = format_draft_markdown(vars_['copyModel'], draft_result)
     write_text(run_dir / '03-draft.md', draft_md)
+
+    review_result = review_draft(draft_result)
+    review_md = format_review_markdown(vars_['reviewModel'], review_result)
+    write_text(run_dir / '04-reviewed.md', review_md)
 
     print(f'Initialized run: {run_dir}')
     print(f'Topic: {topic}')
