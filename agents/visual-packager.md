@@ -22,7 +22,7 @@ XHS-Visual-Packager
 - 出图任务清单
 
 ## Model Strategy
-- 视觉策划模型：`openrouter/moonshotai/kimi-k2.5`
+- 视觉策划模型：`aicodemirror-gpt/gpt-5.4`
 - 图片生成模型：`openrouter/bytedance-seed/seed-2.0-mini`
 
 ## Rules
