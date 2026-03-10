@@ -558,10 +558,16 @@ def generate_images_via_openrouter(assets: dict, image_model: str):
     images = []
     try:
         for page in assets['pages']:
+            prompt = (
+                page['prompt']
+                + '；严格使用竖版 4:5 构图，适合小红书封面/内页。'
+                + ' 画面主体居中，保留安全边距，避免关键文案区域贴边。'
+            )
             payload = {
                 'model': image_model,
-                'input': page['prompt'],
+                'input': prompt,
                 'modalities': ['image'],
+                'size': '1024x1280',
             }
             resp = openrouter_request('https://openrouter.ai/api/v1/responses', payload, api_key)
             data_url = None
@@ -574,10 +580,10 @@ def generate_images_via_openrouter(assets: dict, image_model: str):
             images.append({
                 'page': page['page'],
                 'title': page['title'],
-                'prompt': page['prompt'],
+                'prompt': prompt,
                 'data_url': data_url,
             })
-        return {'ok': True, 'images': images}
+        return {'ok': True, 'images': images, 'request_size': '1024x1280'}
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='ignore')
         return {'ok': False, 'reason': f'HTTP {e.code}: {body[:1000]}', 'images': images}
@@ -595,6 +601,8 @@ def format_assets_markdown(model_name: str, assets: dict):
         lines.append(f"- Image Model: {assets['image_model']}")
     if assets.get('image_generation_status'):
         lines.append(f"- Image Generation Status: {assets['image_generation_status']}")
+    if assets.get('image_request_size'):
+        lines.append(f"- Requested Image Size: {assets['image_request_size']}")
     if assets.get('image_generation_reason'):
         lines.append(f"- Image Generation Note: {assets['image_generation_reason']}")
     lines.append('')
@@ -739,6 +747,7 @@ def main():
         image_result = generate_images_via_openrouter(assets_pack, image_model)
         assets_pack['image_generation_status'] = 'success' if image_result.get('ok') else 'failed'
         assets_pack['image_generation_reason'] = image_result.get('reason', '')
+        assets_pack['image_request_size'] = image_result.get('request_size', '')
         if image_result.get('ok'):
             image_dir = run_dir / 'images'
             ensure_dir(image_dir)
